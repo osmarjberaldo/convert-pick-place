@@ -2,7 +2,7 @@
 """
 PCB Pick and Place Converter
 Converts Altium Pick and Place files to:
-  - POCISAO format (XLSX/XML)
+  - PCL format (XLSX/XML)
   - BOM format (XLSX) grouped by component value
 Cross-platform GUI (Windows & Linux).
 """
@@ -45,9 +45,9 @@ LANGUAGES = {
         "menu_language": "Idioma",
         "lang_pt": "Português (BR)",
         "lang_en": "English",
-        "tab_pocisao": "  \U0001f4cd Pick Place \u2192 POCISAO  ",
+        "tab_pocisao": "  \U0001f4cd Pick Place \u2192 PCL  ",
         "tab_bom": "  \U0001f4cb Pick Place \u2192 BOM  ",
-        "pocisao_header": "Pick Place \u2192 PC POCISAO",
+        "pocisao_header": "Pick Place \u2192 PCL",
         "pocisao_desc": "Converte coordenadas X/Y para formato de montagem",
         "pocisao_desc_en": "Converts X/Y coordinates to assembly format",
         "input_file": "Arquivo de Entrada",
@@ -124,8 +124,8 @@ LANGUAGES = {
         "about_title": "Sobre - PCB Pick and Place Converter",
         "about_title_en": "About - PCB Pick and Place Converter",
         "about_version": "v1.0 \u00b7 Open Source",
-        "about_desc": "Converte arquivos Altium Pick and Place\npara formato PC POCISAO (XLSX/XML) e BOM.\nFerramenta para automa\u00e7\u00e3o de montagem de PCB.",
-        "about_desc_en": "Converts Altium Pick and Place files\nto PC POCISAO format (XLSX/XML) and BOM.\nPCB assembly automation tool.",
+        "about_desc": "Converte arquivos Altium Pick and Place\npara formato PC PCL (XLSX/XML) e BOM.\nFerramenta para automa\u00e7\u00e3o de montagem de PCB.",
+        "about_desc_en": "Converts Altium Pick and Place files\nto PC PCL format (XLSX/XML) and BOM.\nPCB assembly automation tool.",
         "about_created_by": "Criado por",
         "about_created_by_en": "Created by",
         "about_oss": "Este software \u00e9 Open Source - contribui\u00e7\u00f5es s\u00e3o bem-vindas!",
@@ -209,9 +209,9 @@ LANGUAGES = {
         "menu_language": "Language",
         "lang_pt": "Portugu\u00eas (BR)",
         "lang_en": "English",
-        "tab_pocisao": "  \U0001f4cd Pick Place \u2192 POCISAO  ",
+        "tab_pocisao": "  \U0001f4cd Pick Place \u2192 PCL  ",
         "tab_bom": "  \U0001f4cb Pick Place \u2192 BOM  ",
-        "pocisao_header": "Pick Place \u2192 PC POCISAO",
+        "pocisao_header": "Pick Place \u2192 PCL",
         "pocisao_desc": "Converts X/Y coordinates to assembly format",
         "pocisao_desc_en": "Converts X/Y coordinates to assembly format",
         "input_file": "Input File",
@@ -286,8 +286,8 @@ LANGUAGES = {
         "about_title": "About - PCB Pick and Place Converter",
         "about_title_en": "About - PCB Pick and Place Converter",
         "about_version": "v1.0 \u00b7 Open Source",
-        "about_desc": "Converts Altium Pick and Place files\nto PC POCISAO format (XLSX/XML) and BOM.\nPCB assembly automation tool.",
-        "about_desc_en": "Converts Altium Pick and Place files\nto PC POCISAO format (XLSX/XML) and BOM.\nPCB assembly automation tool.",
+        "about_desc": "Converts Altium Pick and Place files\nto PC PCL format (XLSX/XML) and BOM.\nPCB assembly automation tool.",
+        "about_desc_en": "Converts Altium Pick and Place files\nto PC PCL format (XLSX/XML) and BOM.\nPCB assembly automation tool.",
         "about_created_by": "Created by",
         "about_created_by_en": "Created by",
         "about_oss": "This software is Open Source - contributions are welcome!",
@@ -541,14 +541,14 @@ def parse_csv_file(filepath):
 
 
 # =============================================================================
-# POCISAO Conversion Engine
+# PCL Conversion Engine
 # =============================================================================
 
-POCISAO_COLUMNS = ["Designator", "Mid X", "Mid Y", "Layer", "Rotation"]
+PCL_COLUMNS = ["Designator", "Mid X", "Mid Y", "Layer", "Rotation"]
 
 
-def convert_to_pocisao(parsed_rows):
-    """Convert Pick and Place rows to PC POCISAO format."""
+def convert_to_pcl(parsed_rows):
+    """Convert Pick and Place rows to PC PCL format."""
     converted = []
     layer_map = {
         "TopLayer": "Top", "Top": "Top",
@@ -793,11 +793,11 @@ class ToolTip:
 
 
 # =============================================================================
-# Tab 1: Pick Place -> POCISAO
+# Tab 1: Pick Place -> PCL
 # =============================================================================
 
-class PocisaoTab:
-    """Tab for converting Pick and Place -> POCISAO format."""
+class PclTab:
+    """Tab for converting Pick and Place -> PCL format."""
 
     def __init__(self, parent, app):
         self.app = app
@@ -870,10 +870,10 @@ class PocisaoTab:
         prev = ttk.LabelFrame(sf, text=L("preview_data"), padding="8")
         prev.pack(fill="both", expand=True, pady=(0, 10))
 
-        self.tree = ttk.Treeview(prev, columns=POCISAO_COLUMNS, show="headings",
+        self.tree = ttk.Treeview(prev, columns=PCL_COLUMNS, show="headings",
                                   height=8, selectmode="browse")
         widths = {"Designator": 120, "Mid X": 120, "Mid Y": 120, "Layer": 100, "Rotation": 80}
-        for col in POCISAO_COLUMNS:
+        for col in PCL_COLUMNS:
             self.tree.heading(col, text=col,
                               command=lambda c=col: self._sort(c))
             self.tree.column(col, width=widths.get(col, 100), anchor="center", minwidth=60)
@@ -954,11 +954,11 @@ class PocisaoTab:
             if ext == ".txt":
                 md, pr = parse_pick_place_txt(filepath)
                 self.metadata = md
-                self.parsed_rows = convert_to_pocisao(pr)
+                self.parsed_rows = convert_to_pcl(pr)
             elif ext == ".csv":
                 pr = parse_csv_file(filepath)
                 self.metadata = {}
-                self.parsed_rows = convert_to_pocisao(pr)
+                self.parsed_rows = convert_to_pcl(pr)
             elif ext == ".xlsx":
                 wb = openpyxl.load_workbook(filepath, data_only=True)
                 ws = wb.active
@@ -971,7 +971,7 @@ class PocisaoTab:
                         all_rows.append({hdrs[i]: vals[i] if i < len(vals) else "" for i in range(len(hdrs))})
                 wb.close()
                 if all_rows and "Center-X(mm)" in all_rows[0]:
-                    self.parsed_rows = convert_to_pocisao(all_rows)
+                    self.parsed_rows = convert_to_pcl(all_rows)
                 else:
                     self.parsed_rows = all_rows
                 self.metadata = {}
@@ -1754,8 +1754,8 @@ class ConverterApp:
         self.notebook = ttk.Notebook(main)
         self.notebook.pack(fill="both", expand=True)
 
-        # Tab 1 - POCISAO
-        self.tab1 = PocisaoTab(self.notebook, self)
+        # Tab 1 - PCL
+        self.tab1 = PclTab(self.notebook, self)
         self.notebook.add(self.tab1.frame, text=self.lang.t("tab_pocisao"))
 
         # Tab 2 - BOM

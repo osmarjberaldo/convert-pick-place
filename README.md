@@ -1,6 +1,6 @@
 # PCB Pick and Place Converter
 
-**Converte arquivos Altium Pick and Place para formato PC POCISAO JLCSMT STD (XLSX/XML) e BOM (XLSX).**
+**Converte arquivos Altium Pick and Place para formato PC PCL JLCSMT STD (XLSX/XML) e BOM (XLSX).**
 
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
@@ -12,7 +12,7 @@
 
 Aplicativo desktop com **2 abas** para automatizar a conversão de arquivos **Pick and Place** gerados pelo **Altium Designer**:
 
-- **Aba 1 — 📍 Pick Place → POCISAO:** Extrai coordenadas X/Y, Layer e Rotação para planilha de montagem JLCSMT STD
+- **Aba 1 — 📍 Pick Place → PCL:** Extrai coordenadas X/Y, Layer e Rotação para planilha de montagem JLCSMT STD
 - **Aba 2 — 📋 Pick Place → BOM:** Agrupa componentes por valor para lista de compras (BOM) no formato JLCPCB
 
 ### ✨ Funcionalidades
@@ -49,13 +49,13 @@ O app detecta automaticamente o idioma do sistema:
 
 Para alternar manualmente: menu **Idioma** ou atalho **Ctrl+L**.
 
-### 3. Aba 1 — POCISAO (Coordenadas)
+### 3. Aba 1 — PCL (Posição dos Componentes na PCB)
 
 Converte posições dos componentes para planilha de montagem.
 
 **Mapeamento:**
 
-| Pick and Place | POCISAO XLSX | Exemplo |
+| Pick and Place | PCL XLSX | Exemplo |
 |---|---|---|
 | Designator | Designator | C1, R1, U2 |
 | Center-X(mm) | Mid X | 131.8260 mm |
@@ -100,14 +100,14 @@ Na aba BOM, selecione um componente na tabela e clique em um dos **7 sites** par
 
 | Aba | TXT | CSV | XLSX | XML |
 |---|---|---|---|---|
-| 📍 POCISAO | ✅ | ✅ | ✅ | ✅ |
+| 📍 PCL | ✅ | ✅ | ✅ | ✅ |
 | 📋 BOM | ✅ | ✅ | — | — |
 
 ### 📄 Formatos de Saída
 
 | Aba | XLSX | XML |
 |---|---|---|
-| 📍 POCISAO | ✅ | ✅ |
+| 📍 PCL | ✅ | ✅ |
 | 📋 BOM | ✅ | — |
 
 ---
