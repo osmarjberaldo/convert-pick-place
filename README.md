@@ -36,7 +36,11 @@ Aplicativo desktop com **4 abas** para automatizar a conversão de arquivos **Pi
 
 ### 1. Instalação
 
+> **Pré-requisito:** tenha o **Python 3** instalado no sistema antes de executar os comandos abaixo.
+
 ```bash
+git clone https://github.com/osmarjberaldo/convert-pick-place.git
+cd convert-pick-place
 pip install -r requirements.txt
 ```
 
