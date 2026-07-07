@@ -21,6 +21,7 @@ from tkinter import TclError
 import subprocess
 import webbrowser
 from urllib.parse import quote
+from html import escape
 
 try:
     import openpyxl
@@ -45,8 +46,10 @@ LANGUAGES = {
         "menu_language": "Idioma",
         "lang_pt": "Português (BR)",
         "lang_en": "English",
-        "tab_pocisao": "  \U0001f4cd Pick Place \u2192 PCL  ",
-        "tab_bom": "  \U0001f4cb Pick Place \u2192 BOM  ",
+        "tab_pocisao": "  \U0001f4cd PCL - JLCPCB  ",
+        "tab_bom": "  \U0001f4cb BOM - JLCPCB  ",
+        "tab_pcbway_bom": "  \U0001f4cb BOM - PCBWAY  ",
+        "tab_pcbway_centroid": "  \U0001f4cd SIMPLE - PCBWAY  ",
         "pocisao_header": "Pick Place \u2192 PCL",
         "pocisao_desc": "Converte coordenadas X/Y para formato de montagem",
         "pocisao_desc_en": "Converts X/Y coordinates to assembly format",
@@ -110,14 +113,24 @@ LANGUAGES = {
         "bom_header_en": "Pick Place \u2192 BOM (Component List)",
         "bom_desc": "Agrupa componentes iguais para lista de compras JLCPCB",
         "bom_desc_en": "Groups identical components for JLCPCB shopping list",
+        "pcbway_bom_header": "BOM - PCBWAY",
+        "pcbway_bom_desc": "Gera BOM PCBWay em CSV no formato do exemplo",
+        "pcbway_centroid_header": "SIMPLE - PCBWAY",
+        "pcbway_centroid_desc": "Gera arquivo centroid PCBWay em TXT",
         "input_file_csv": "Arquivo de Entrada (CSV)",
         "input_file_csv_en": "Input File (CSV)",
+        "input_file_txt": "Arquivo de Entrada (TXT)",
+        "input_file_txt_en": "Input File (TXT)",
+        "input_file_pnp": "Arquivo de Entrada (TXT/CSV/XLSX)",
+        "input_file_pnp_en": "Input File (TXT/CSV/XLSX)",
         "preview_bom": "Preview BOM (Agrupado por valor)",
         "preview_bom_en": "BOM Preview (Grouped by value)",
         "component_groups": "grupo(s) de componentes",
         "component_groups_en": "component group(s)",
         "dialog_save_bom": "Salvar BOM como",
         "dialog_save_bom_en": "Save BOM as",
+        "dialog_save_pcbway_bom": "Salvar BOM PCBWay como",
+        "dialog_save_pcbway_centroid": "Salvar Centroid PCBWay como",
         "bom_saved": "BOM salva com sucesso!",
         "bom_saved_en": "BOM saved successfully!",
         # About dialog
@@ -209,8 +222,10 @@ LANGUAGES = {
         "menu_language": "Language",
         "lang_pt": "Portugu\u00eas (BR)",
         "lang_en": "English",
-        "tab_pocisao": "  \U0001f4cd Pick Place \u2192 PCL  ",
-        "tab_bom": "  \U0001f4cb Pick Place \u2192 BOM  ",
+        "tab_pocisao": "  \U0001f4cd PCL - JLCPCB  ",
+        "tab_bom": "  \U0001f4cb BOM - JLCPCB  ",
+        "tab_pcbway_bom": "  \U0001f4cb BOM - PCBWAY  ",
+        "tab_pcbway_centroid": "  \U0001f4cd SIMPLE - PCBWAY  ",
         "pocisao_header": "Pick Place \u2192 PCL",
         "pocisao_desc": "Converts X/Y coordinates to assembly format",
         "pocisao_desc_en": "Converts X/Y coordinates to assembly format",
@@ -273,14 +288,24 @@ LANGUAGES = {
         "bom_header_en": "Pick Place \u2192 BOM (Component List)",
         "bom_desc": "Groups identical components for JLCPCB shopping list",
         "bom_desc_en": "Groups identical components for JLCPCB shopping list",
+        "pcbway_bom_header": "BOM - PCBWAY",
+        "pcbway_bom_desc": "Creates PCBWay BOM CSV in the sample format",
+        "pcbway_centroid_header": "SIMPLE - PCBWAY",
+        "pcbway_centroid_desc": "Creates PCBWay centroid TXT file",
         "input_file_csv": "Input File (CSV)",
         "input_file_csv_en": "Input File (CSV)",
+        "input_file_txt": "Input File (TXT)",
+        "input_file_txt_en": "Input File (TXT)",
+        "input_file_pnp": "Input File (TXT/CSV/XLSX)",
+        "input_file_pnp_en": "Input File (TXT/CSV/XLSX)",
         "preview_bom": "BOM Preview (Grouped by value)",
         "preview_bom_en": "BOM Preview (Grouped by value)",
         "component_groups": "component group(s)",
         "component_groups_en": "component group(s)",
         "dialog_save_bom": "Save BOM as",
         "dialog_save_bom_en": "Save BOM as",
+        "dialog_save_pcbway_bom": "Save PCBWay BOM as",
+        "dialog_save_pcbway_centroid": "Save PCBWay Centroid as",
         "bom_saved": "BOM saved successfully!",
         "bom_saved_en": "BOM saved successfully!",
         "about_title": "About - PCB Pick and Place Converter",
@@ -442,7 +467,7 @@ def detect_encoding(filepath):
     """Detect file encoding by trying common encodings."""
     with open(filepath, "rb") as f:
         raw = f.read(65536)
-    for enc in ["utf-8-sig", "utf-8", "latin-1", "cp1252"]:
+    for enc in ["utf-8-sig", "utf-8", "cp1252", "latin-1"]:
         try:
             raw.decode(enc)
             return enc
@@ -540,11 +565,49 @@ def parse_csv_file(filepath):
     return rows
 
 
+def parse_xlsx_file(filepath):
+    """Parse an XLSX Pick and Place file using the active sheet."""
+    if not HAS_OPENPYXL:
+        raise ImportError("openpyxl is required. Install with: pip install openpyxl")
+
+    wb = openpyxl.load_workbook(filepath, data_only=True)
+    ws = wb.active
+    rows = []
+    headers = []
+    try:
+        for row in ws.iter_rows(values_only=True):
+            vals = [str(v).strip() if v is not None else "" for v in row]
+            if not any(vals):
+                continue
+            if "Designator" in vals and "Center-X(mm)" in vals:
+                headers = vals
+                continue
+            if headers:
+                rows.append({
+                    headers[i]: vals[i] if i < len(vals) else ""
+                    for i in range(len(headers))
+                    if headers[i]
+                })
+    finally:
+        wb.close()
+    return rows
+
+
 # =============================================================================
 # PCL Conversion Engine
 # =============================================================================
 
 PCL_COLUMNS = ["Designator", "Mid X", "Mid Y", "Layer", "Rotation"]
+POCISAO_COLUMNS = PCL_COLUMNS
+PCBWAY_BOM_COLUMNS = [
+    "Item #", "*Designator", "*Qty", "Manufacturer", "*Mfg Part #",
+    "Description / Value", "*Package/Footprint ", "Type",
+    "Your Instructions / Notes",
+]
+PCBWAY_CENTROID_COLUMNS = [
+    "Designator", "Footprint", "Mid X", "Mid Y", "Ref X", "Ref Y",
+    "Pad X", "Pad Y", "TB", "Rotation", "Comment",
+]
 
 
 def convert_to_pcl(parsed_rows):
@@ -575,6 +638,62 @@ def convert_to_pcl(parsed_rows):
             "Mid Y": y_fmt,
             "Layer": layer,
             "Rotation": row.get("Rotation", "0"),
+        })
+    return converted
+
+
+def format_mil(value):
+    """Convert a millimeter coordinate to PCBWay mil text."""
+    raw = str(value).strip().replace("mm", "").replace("mil", "").strip()
+    if not raw:
+        return ""
+    try:
+        mil = float(raw) * 39.3700787402
+        text = f"{mil:.3f}".rstrip("0").rstrip(".")
+        return f"{text}mil"
+    except (ValueError, TypeError):
+        return str(value).strip()
+
+
+def format_rotation(value):
+    """Format rotation for PCBWay centroid output."""
+    raw = str(value).strip()
+    if not raw:
+        return "0.00"
+    try:
+        return f"{float(raw):.2f}"
+    except (ValueError, TypeError):
+        return raw
+
+
+def convert_to_pcbway_centroid(parsed_rows):
+    """Convert Pick and Place rows to the official PCBWay centroid TXT shape."""
+    converted = []
+    layer_map = {
+        "TopLayer": "T", "Top": "T", "top": "T", "T": "T",
+        "BottomLayer": "B", "Bottom": "B", "bottom": "B", "B": "B",
+    }
+    for row in parsed_rows:
+        x_fmt = format_mil(row.get("Center-X(mm)", row.get("Mid X", "")))
+        y_fmt = format_mil(row.get("Center-Y(mm)", row.get("Mid Y", "")))
+
+        raw_layer = row.get("Layer", "Top").strip()
+        tb = layer_map.get(raw_layer, raw_layer.upper()[:1] if raw_layer else "T")
+        if tb not in ("T", "B"):
+            tb = "T"
+
+        converted.append({
+            "Designator": row.get("Designator", ""),
+            "Footprint": row.get("Footprint", ""),
+            "Mid X": x_fmt,
+            "Mid Y": y_fmt,
+            "Ref X": x_fmt,
+            "Ref Y": y_fmt,
+            "Pad X": x_fmt,
+            "Pad Y": y_fmt,
+            "TB": tb,
+            "Rotation": format_rotation(row.get("Rotation", "0")),
+            "Comment": row.get("Comment", ""),
         })
     return converted
 
@@ -618,6 +737,50 @@ def convert_to_bom(parsed_rows):
             "Designator": ", ".join(desigs),
             "Footprint": g["comment_orig"],
             "JLCPCB Part #": "",
+        })
+    return result
+
+
+def convert_to_pcbway_bom(parsed_rows):
+    """Convert Pick and Place rows to PCBWay BOM CSV format."""
+    groups = {}
+    for row in parsed_rows:
+        comment = row.get("Comment", "").strip()
+        footprint = row.get("Footprint", "").strip()
+        description = row.get("Description", "").strip()
+        designator = row.get("Designator", "").strip()
+        if not comment and not designator:
+            continue
+
+        key = (comment.upper(), footprint.upper(), description.upper())
+        if key not in groups:
+            groups[key] = {
+                "designators": [],
+                "comment": comment,
+                "footprint": footprint,
+                "description": description,
+            }
+        if designator:
+            groups[key]["designators"].append(designator)
+
+    result = []
+    for item_no, key in enumerate(sorted(groups.keys()), 1):
+        g = groups[key]
+        desigs = sorted(g["designators"], key=lambda d: (
+            "".join(filter(str.isalpha, d)),
+            int("".join(filter(str.isdigit, d))) if any(c.isdigit() for c in d) else 0,
+            d,
+        ))
+        result.append({
+            "Item #": item_no,
+            "*Designator": ",".join(desigs),
+            "*Qty": len(desigs),
+            "Manufacturer": "",
+            "*Mfg Part #": g["comment"],
+            "Description / Value": g["description"] or g["comment"],
+            "*Package/Footprint ": g["footprint"],
+            "Type": "SMD",
+            "Your Instructions / Notes": "",
         })
     return result
 
@@ -668,6 +831,69 @@ def export_xlsx(rows, columns, output_path, col_widths=None):
 
     wb.save(output_path)
     return output_path
+
+
+def export_csv(rows, columns, output_path):
+    """Export rows to CSV with the selected column order."""
+    with open(output_path, "w", encoding="utf-8-sig", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=columns, extrasaction="ignore")
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({col: row.get(col, "") for col in columns})
+    return output_path
+
+
+def export_tabbed_txt(rows, columns, output_path):
+    """Export rows to a PCBWay-style aligned TXT file."""
+    align_left = {"Designator", "Footprint", "TB", "Comment"}
+    widths = {}
+    for col in columns:
+        widths[col] = max(len(col), *(len(str(row.get(col, ""))) for row in rows), 1)
+
+    def fmt_cell(col, value):
+        text = str(value)
+        if col in align_left:
+            return text.ljust(widths[col])
+        return text.rjust(widths[col])
+
+    with open(output_path, "w", encoding="utf-8", newline="") as f:
+        f.write(" ".join(fmt_cell(col, col) for col in columns).rstrip() + "\n")
+        for row in rows:
+            f.write(" ".join(fmt_cell(col, row.get(col, "")) for col in columns).rstrip() + "\n")
+    return output_path
+
+
+def export_xls(rows, columns, output_path):
+    """Export rows to an Excel-compatible HTML table with .xls extension."""
+    html = [
+        '<html><head><meta charset="utf-8"></head><body>',
+        '<table border="1">',
+        '<tr>' + ''.join(f'<th>{escape(str(col))}</th>' for col in columns) + '</tr>',
+    ]
+    for row in rows:
+        html.append(
+            '<tr>' + ''.join(
+                f'<td>{escape(str(row.get(col, "")))}</td>' for col in columns
+            ) + '</tr>'
+        )
+    html.extend(['</table>', '</body></html>'])
+    with open(output_path, "w", encoding="utf-8", newline="") as f:
+        f.write("\n".join(html))
+    return output_path
+
+
+def export_by_extension(rows, columns, output_path, col_widths=None):
+    """Export rows using the output filename extension."""
+    ext = os.path.splitext(output_path)[1].lower()
+    if ext == ".xlsx":
+        return export_xlsx(rows, columns, output_path, col_widths)
+    if ext == ".xls":
+        return export_xls(rows, columns, output_path)
+    if ext == ".csv":
+        return export_csv(rows, columns, output_path)
+    if ext == ".txt":
+        return export_tabbed_txt(rows, columns, output_path)
+    raise ValueError(f"Formato de saida nao suportado: {ext}")
 
 
 # =============================================================================
@@ -1229,6 +1455,20 @@ class PclTab:
 class BomTab:
     """Tab for converting Pick and Place CSV -> BOM format."""
 
+    columns = BOM_COLUMNS
+    header_key = "bom_header"
+    desc_key = "bom_desc"
+    input_key = "input_file_pnp"
+    preview_key = "preview_bom"
+    converter = staticmethod(convert_to_bom)
+    save_dialog_key = "dialog_save_bom"
+    output_extension = ".xlsx"
+    output_initialfile = "Bom Convert New.xlsx"
+    export_widths = [40, 22, 18, 18]
+    exporter = staticmethod(export_xlsx)
+    output_filetypes = None
+    edit_options = {}
+
     def __init__(self, parent, app):
         self.app = app
         self.frame = ttk.Frame(parent, padding="10")
@@ -1237,6 +1477,7 @@ class BomTab:
         self.input_filepath = StringVar()
         self.parsed_rows = []
         self.raw_rows = []
+        self.columns = list(self.columns)
         self._edit_entry = None
         self._edit_item = None
         self._edit_col = None
@@ -1273,14 +1514,14 @@ class BomTab:
         # Header
         header = ttk.Frame(sf)
         header.pack(fill="x", pady=(0, 10))
-        ttk.Label(header, text=L("bom_header"),
+        ttk.Label(header, text=L(self.header_key),
                   font=("Segoe UI", 12, "bold")).pack(anchor="w")
         ttk.Label(header,
-                  text=L("bom_desc"),
+                  text=L(self.desc_key),
                   font=("Segoe UI", 9), foreground=self.app.COLORS["text_secondary"]).pack(anchor="w", pady=(2, 0))
 
         # File selection
-        sel = ttk.LabelFrame(sf, text=L("input_file_csv"), padding="10")
+        sel = ttk.LabelFrame(sf, text=L(self.input_key), padding="10")
         sel.pack(fill="x", pady=(0, 10))
         row1 = ttk.Frame(sel)
         row1.pack(fill="x", pady=(3, 0))
@@ -1295,13 +1536,20 @@ class BomTab:
         self.file_info.pack(anchor="w", pady=(6, 0))
 
         # Preview
-        prev = ttk.LabelFrame(sf, text=L("preview_bom"), padding="8")
+        prev = ttk.LabelFrame(sf, text=L(self.preview_key), padding="8")
         prev.pack(fill="both", expand=True, pady=(0, 10))
 
-        self.tree = ttk.Treeview(prev, columns=BOM_COLUMNS, show="headings",
+        self.tree = ttk.Treeview(prev, columns=self.columns, show="headings",
                                   height=8, selectmode="browse")
-        widths = {"Comment": 300, "Designator": 180, "Footprint": 150, "JLCPCB Part #": 120}
-        for col in BOM_COLUMNS:
+        widths = {
+            "Comment": 300, "Designator": 180, "Footprint": 150, "JLCPCB Part #": 120,
+            "Item #": 70, "*Designator": 180, "*Qty": 70, "Manufacturer": 140,
+            "*Mfg Part #": 160, "Description / Value": 280,
+            "*Package/Footprint ": 170, "Type": 90, "Your Instructions / Notes": 220,
+            "Mid X": 120, "Mid Y": 120, "Ref X": 120, "Ref Y": 120,
+            "Pad X": 120, "Pad Y": 120, "TB": 60, "Rotation": 90,
+        }
+        for col in self.columns:
             self.tree.heading(col, text=col, command=lambda c=col: self._sort(c))
             self.tree.column(col, width=widths.get(col, 150), anchor="center", minwidth=60)
 
@@ -1395,7 +1643,10 @@ class BomTab:
         L = self.app.lang.t
         f = filedialog.askopenfilename(
             title=L("select_csv_title"),
-            filetypes=[("CSV Pick and Place", "*.csv"), ("Pick and Place TXT", "*.txt"),
+            filetypes=[(L("supported_files"), "*.txt *.csv *.xlsx"),
+                       ("Pick and Place TXT", "*.txt"),
+                       ("CSV Pick and Place", "*.csv"),
+                       ("Excel XLSX", "*.xlsx"),
                        (L("all_files"), "*.*")])
         if f:
             self.load(f)
@@ -1408,10 +1659,12 @@ class BomTab:
                 self.raw_rows = parse_csv_file(filepath)
             elif ext == ".txt":
                 _, self.raw_rows = parse_pick_place_txt(filepath)
+            elif ext == ".xlsx":
+                self.raw_rows = parse_xlsx_file(filepath)
             else:
                 raise ValueError(f"{self.app.lang.t('unsupported_format')}: {ext}")
 
-            self.parsed_rows = convert_to_bom(self.raw_rows)
+            self.parsed_rows = self.converter(self.raw_rows)
             self._update_preview()
             L = self.app.lang.t
             self.file_info.config(
@@ -1437,8 +1690,7 @@ class BomTab:
         for i, r in enumerate(self.parsed_rows):
             tag = "even" if i % 2 == 0 else "odd"
             self.tree.insert("", "end", tags=(tag,), values=(
-                r.get("Comment", ""), r.get("Designator", ""),
-                r.get("Footprint", ""), r.get("JLCPCB Part #", "")))
+                [r.get(col, "") for col in self.columns]))
         L = self.app.lang.t
         cnt = len(self.parsed_rows)
         if cnt:
@@ -1447,20 +1699,20 @@ class BomTab:
             self.status.config(text=L("no_data"), foreground=self.app.COLORS["text_muted"])
 
     def _sort(self, col):
-        items = [{c: self.tree.set(k, c) for c in BOM_COLUMNS} for k in self.tree.get_children("")]
+        items = [{c: self.tree.set(k, c) for c in self.columns} for k in self.tree.get_children("")]
         items = sort_natural(items, col)
         self.tree.delete(*self.tree.get_children())
         for i, item in enumerate(items):
             tag = "even" if i % 2 == 0 else "odd"
-            self.tree.insert("", "end", tags=(tag,), values=[item.get(c, "") for c in BOM_COLUMNS])
+            self.tree.insert("", "end", tags=(tag,), values=[item.get(c, "") for c in self.columns])
 
     # ---- Editing, Adding, Deleting ----
 
     def _add_row(self):
         """Add a new blank row to the data."""
-        blank = {c: "" for c in BOM_COLUMNS}
+        blank = {c: "" for c in self.columns}
         self.parsed_rows.append(blank)
-        self.tree.insert("", "end", values=[blank.get(c, "") for c in BOM_COLUMNS])
+        self.tree.insert("", "end", values=[blank.get(c, "") for c in self.columns])
         L = self.app.lang.t
         self.status.config(text=f"{len(self.parsed_rows)} {L('component_groups')}", foreground=self.app.COLORS["text"])
 
@@ -1496,9 +1748,9 @@ class BomTab:
             return
 
         col_idx = int(col_id.replace("#", "")) - 1
-        if col_idx < 0 or col_idx >= len(BOM_COLUMNS):
+        if col_idx < 0 or col_idx >= len(self.columns):
             return
-        col_name = BOM_COLUMNS[col_idx]
+        col_name = self.columns[col_idx]
 
         bbox = self.tree.bbox(item_id, col_id)
         if not bbox:
@@ -1510,15 +1762,26 @@ class BomTab:
         self._edit_item = item_id
         self._edit_col = col_name
 
-        entry = ttk.Entry(self.tree, font=("Consolas", 9))
-        entry.place(x=x, y=y, width=w, height=h)
-        entry.insert(0, current_val)
-        entry.select_range(0, "end")
-        entry.focus_set()
+        options = self.edit_options.get(col_name)
+        if options:
+            entry = ttk.Combobox(self.tree, values=options,
+                                 state="readonly", font=("Consolas", 9))
+            entry.set(current_val if current_val in options else options[0])
+            entry.place(x=x, y=y, width=w, height=h)
+            entry.focus_set()
+            entry.bind("<<ComboboxSelected>>", self._finish_edit)
+            entry.bind("<Escape>", self._cancel_edit)
+            entry.bind("<FocusOut>", self._finish_edit)
+        else:
+            entry = ttk.Entry(self.tree, font=("Consolas", 9))
+            entry.place(x=x, y=y, width=w, height=h)
+            entry.insert(0, current_val)
+            entry.select_range(0, "end")
+            entry.focus_set()
 
-        entry.bind("<Return>", self._finish_edit)
-        entry.bind("<Escape>", self._cancel_edit)
-        entry.bind("<FocusOut>", self._finish_edit)
+            entry.bind("<Return>", self._finish_edit)
+            entry.bind("<Escape>", self._cancel_edit)
+            entry.bind("<FocusOut>", self._finish_edit)
 
         self._edit_entry = entry
 
@@ -1617,11 +1880,20 @@ class BomTab:
             messagebox.showwarning(L("warn_no_data"), L("warn_load_first"))
             return
 
+        if self.output_filetypes:
+            filetypes = self.output_filetypes + [(L("all_files"), "*.*")]
+        elif self.output_extension == ".csv":
+            filetypes = [("CSV", "*.csv"), (L("all_files"), "*.*")]
+        elif self.output_extension == ".txt":
+            filetypes = [("TXT", "*.txt"), (L("all_files"), "*.*")]
+        else:
+            filetypes = [("Excel XLSX", "*.xlsx"), (L("all_files"), "*.*")]
+
         out = filedialog.asksaveasfilename(
-            title=L("dialog_save_bom"),
-            defaultextension=".xlsx",
-            initialfile="Bom Convert New.xlsx",
-            filetypes=[("Excel XLSX", "*.xlsx"), (L("all_files"), "*.*")])
+            title=L(self.save_dialog_key),
+            defaultextension=self.output_extension,
+            initialfile=self.output_initialfile,
+            filetypes=filetypes)
         if not out:
             return
 
@@ -1630,7 +1902,12 @@ class BomTab:
         self.frame.update_idletasks()
 
         try:
-            export_xlsx(self.parsed_rows, BOM_COLUMNS, out, [40, 22, 18, 18])
+            if self.output_filetypes:
+                export_by_extension(self.parsed_rows, self.columns, out, self.export_widths)
+            elif self.exporter is export_xlsx:
+                self.exporter(self.parsed_rows, self.columns, out, self.export_widths)
+            else:
+                self.exporter(self.parsed_rows, self.columns, out)
             self.progress.stop()
             self.progress.pack_forget()
             self.app.set_status(L("status_saved", file=os.path.basename(out)))
@@ -1642,6 +1919,98 @@ class BomTab:
             self.progress.pack_forget()
             self.app.set_status(L("status_error", msg=str(e)), is_error=True)
             messagebox.showerror(self.app.lang.t("error_title"), f"{self.app.lang.t('error_convert')}\n{str(e)}")
+
+
+class PcbwayBomCsvTab(BomTab):
+    """Tab for generating PCBWay BOM CSV from Pick and Place files."""
+
+    columns = PCBWAY_BOM_COLUMNS
+    header_key = "pcbway_bom_header"
+    desc_key = "pcbway_bom_desc"
+    converter = staticmethod(convert_to_pcbway_bom)
+    save_dialog_key = "dialog_save_pcbway_bom"
+    output_extension = ".csv"
+    output_initialfile = "PCBWay BOM.csv"
+    exporter = staticmethod(export_csv)
+    output_filetypes = [
+        ("TXT", "*.txt"),
+        ("Excel XLS", "*.xls"),
+        ("Excel XLSX", "*.xlsx"),
+        ("CSV", "*.csv"),
+    ]
+
+    def _search_component(self, site):
+        sel = self.tree.selection()
+        if not sel:
+            messagebox.showwarning(
+                self.app.lang.t("btn_search"),
+                self.app.lang.t("search_no_selection"))
+            return
+
+        item_id = sel[0]
+        query_parts = [
+            self.tree.set(item_id, "*Mfg Part #"),
+            self.tree.set(item_id, "Description / Value"),
+            self.tree.set(item_id, "*Package/Footprint "),
+        ]
+        query = " ".join(p for p in query_parts if p.strip())
+        if not query.strip():
+            messagebox.showwarning(
+                self.app.lang.t("btn_search"),
+                self.app.lang.t("search_no_selection"))
+            return
+
+        encoded = quote(query)
+        urls = {
+            "octopart": f"https://octopart.com/search?q={encoded}",
+            "snapmagic": f"https://www.snapmagic.com/search?q={encoded}",
+            "mouser": f"https://br.mouser.com/c/?q={encoded}",
+            "jlcpcb": f"https://jlcpcb.com/parts/componentSearch?searchTxt={encoded}",
+            "digikey": f"https://www.digikey.com.br/pt/products/result?s={encoded}",
+            "snapeda": f"https://www.snapeda.com/search/?q={encoded}",
+            "lcsc": f"https://www.lcsc.com/search?q={encoded}",
+        }
+        url = urls.get(site)
+        if url:
+            webbrowser.open(url)
+
+
+class PcbwayCentroidTxtTab(BomTab):
+    """Tab for generating PCBWay centroid TXT from Pick and Place files."""
+
+    columns = PCBWAY_CENTROID_COLUMNS
+    header_key = "pcbway_centroid_header"
+    desc_key = "pcbway_centroid_desc"
+    preview_key = "preview_data"
+    converter = staticmethod(convert_to_pcbway_centroid)
+    save_dialog_key = "dialog_save_pcbway_centroid"
+    output_extension = ".txt"
+    output_initialfile = "PCBWay Centroid.txt"
+    exporter = staticmethod(export_tabbed_txt)
+    output_filetypes = [
+        ("TXT", "*.txt"),
+        ("Excel XLS", "*.xls"),
+        ("Excel XLSX", "*.xlsx"),
+        ("CSV", "*.csv"),
+    ]
+    edit_options = {"TB": ["T", "B"]}
+
+    def _search_component(self, site):
+        sel = self.tree.selection()
+        if not sel:
+            messagebox.showwarning(
+                self.app.lang.t("btn_search"),
+                self.app.lang.t("search_no_selection"))
+            return
+
+        item_id = sel[0]
+        query = self.tree.set(item_id, "Designator")
+        if not query.strip():
+            messagebox.showwarning(
+                self.app.lang.t("btn_search"),
+                self.app.lang.t("search_no_selection"))
+            return
+        webbrowser.open(f"https://www.pcbway.com/?from={quote(query)}")
 
 
 # =============================================================================
@@ -1761,6 +2130,14 @@ class ConverterApp:
         # Tab 2 - BOM
         self.tab2 = BomTab(self.notebook, self)
         self.notebook.add(self.tab2.frame, text=self.lang.t("tab_bom"))
+
+        # Tab 3 - PCBWay BOM CSV
+        self.tab3 = PcbwayBomCsvTab(self.notebook, self)
+        self.notebook.add(self.tab3.frame, text=self.lang.t("tab_pcbway_bom"))
+
+        # Tab 4 - PCBWay Centroid TXT
+        self.tab4 = PcbwayCentroidTxtTab(self.notebook, self)
+        self.notebook.add(self.tab4.frame, text=self.lang.t("tab_pcbway_centroid"))
 
         # Status bar
         status_frame = ttk.Frame(main, relief="sunken", padding=(4, 2))
