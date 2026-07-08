@@ -20,7 +20,7 @@ Aplicativo desktop com **4 abas** para automatizar a conversão de arquivos **Pi
 ### ✨ Funcionalidades
 
 - **Auto-detecção de idioma** — identifica o idioma do sistema operacional (Português → PT-BR, outros → EN)
-- **Busca integrada em 7 sites** — Octopart, SnapMagic, Mouser, JLCPCB Parts, DigiKey, SnapEDA e LCSC
+- **Busca integrada em 7 sites** — Octopart, SearchEngine, Mouser, JLCPCB Parts, DigiKey, SnapEDA e LCSC
 - **Tooltips descritivos** em todos os botões
 - **Preview em tabela** ordenável com edição inline (duplo-clique)
 - **Campos com seleção controlada** — Layer `Top/Bottom` no JLCPCB e `TB` `T/B` no PCBWay
@@ -164,7 +164,7 @@ Nas abas BOM/PCBWay, selecione um componente na tabela e clique em um dos **7 si
 | Site | URL de busca |
 |---|---|
 | **Octopart** | `octopart.com/search?q=` |
-| **SnapMagic** | `snapmagic.com/search?q=` |
+| **SearchEngine** | `componentsearchengine.com/search?term=` |
 | **Mouser (BR)** | `br.mouser.com/c/?q=` |
 | **JLCPCB Parts** | `jlcpcb.com/parts/componentSearch?searchTxt=` |
 | **DigiKey** | `digikey.com.br/pt/products/result?s=` |

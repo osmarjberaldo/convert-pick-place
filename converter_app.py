@@ -181,7 +181,7 @@ LANGUAGES = {
         "select_csv_title_en": "Select Altium CSV file",
         "btn_search": "🔍 Buscar Componente",
         "search_octopart": "Octopart",
-        "search_snapmagic": "SnapMagic",
+        "search_snapmagic": "SearchEngine",
         "search_mouser": "Mouser (BR)",
         "search_jlcpcb": "JLCPCB Parts",
         "search_digikey": "DigiKey",
@@ -199,7 +199,7 @@ LANGUAGES = {
         "tip_delete_row": "Excluir linha selecionada",
         "tip_convert": "Converter e salvar arquivo",
         "tip_search_octopart": "Buscar componente no Octopart",
-        "tip_search_snapmagic": "Buscar componente no SnapMagic",
+        "tip_search_snapmagic": "Buscar componente no Component Search Engine",
         "tip_search_mouser": "Buscar componente na Mouser",
         "tip_search_jlcpcb": "Buscar componente no JLCPCB Parts",
         "tip_search_digikey": "Buscar componente na DigiKey",
@@ -354,7 +354,7 @@ LANGUAGES = {
         "btn_search": "🔍 Search Component",
         "btn_search_en": "🔍 Search Component",
         "search_octopart": "Octopart",
-        "search_snapmagic": "SnapMagic",
+        "search_snapmagic": "SearchEngine",
         "search_mouser": "Mouser (BR)",
         "search_jlcpcb": "JLCPCB Parts",
         "search_digikey": "DigiKey",
@@ -374,7 +374,7 @@ LANGUAGES = {
         "tip_delete_row": "Delete selected row",
         "tip_convert": "Convert and save file",
         "tip_search_octopart": "Search component on Octopart",
-        "tip_search_snapmagic": "Search component on SnapMagic",
+        "tip_search_snapmagic": "Search component on Component Search Engine",
         "tip_search_mouser": "Search component on Mouser",
         "tip_search_jlcpcb": "Search component on JLCPCB Parts",
         "tip_search_digikey": "Search component on DigiKey",
@@ -1862,7 +1862,7 @@ class BomTab:
 
         urls = {
             "octopart": f"https://octopart.com/search?q={encoded}",
-            "snapmagic": f"https://www.snapmagic.com/search?q={encoded}",
+            "snapmagic": f"https://componentsearchengine.com/search?term={encoded}",
             "mouser": f"https://br.mouser.com/c/?q={encoded}",
             "jlcpcb": f"https://jlcpcb.com/parts/componentSearch?searchTxt={encoded}",
             "digikey": f"https://www.digikey.com.br/pt/products/result?s={encoded}",
@@ -1963,7 +1963,7 @@ class PcbwayBomCsvTab(BomTab):
         encoded = quote(query)
         urls = {
             "octopart": f"https://octopart.com/search?q={encoded}",
-            "snapmagic": f"https://www.snapmagic.com/search?q={encoded}",
+            "snapmagic": f"https://componentsearchengine.com/search?term={encoded}",
             "mouser": f"https://br.mouser.com/c/?q={encoded}",
             "jlcpcb": f"https://jlcpcb.com/parts/componentSearch?searchTxt={encoded}",
             "digikey": f"https://www.digikey.com.br/pt/products/result?s={encoded}",
